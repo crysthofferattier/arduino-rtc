@@ -8,6 +8,11 @@ void rtcModuleChecks();
 void adjustRTC();
 unsigned long getUnixTimeStamp();
 
+unsigned long previousMillis = 0; // Stores the last time the Unix timestamp was printed
+const long interval = 1000;       // 1 second interval to print the Unix timestamp
+
+bool rtcTimeSet = false;
+
 void setup()
 {
   startSerialMonitor();
@@ -16,9 +21,17 @@ void setup()
 
 void loop()
 {
-  Serial.println(getUnixTimeStamp());
+  unsigned long currentMillis = millis(); // Get the current time in milliseconds
 
-  delay(1000);
+  // Check if 1 second has passed
+  if (currentMillis - previousMillis >= interval)
+  {
+    // Save the last time the timestamp was printed
+    previousMillis = currentMillis;
+
+    // Print the Unix timestamp
+    Serial.println(getUnixTimeStamp());  
+  }
 }
 
 /*!
@@ -28,7 +41,13 @@ void loop()
 */
 void adjustRTC()
 {
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  if (!rtcTimeSet)
+  {
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    rtcTimeSet = true;
+
+    Serial.println("RTC time has been set to compilation time.");
+  }
 }
 
 /**
@@ -53,14 +72,29 @@ void startSerialMonitor()
  */
 void rtcModuleChecks()
 {
-  if (!rtc.begin())
+  unsigned long startMillis = millis(); // Record the start time for timeout
+  unsigned long timeout = 5000;         // Set the timeout period (5 seconds)
+
+  while (!rtc.begin())
   {
-    Serial.println("RTC Module not found!");
-    while (true)
-      ;
+    Serial.println("Trying to locate RTC Module...");
+
+    // Check if the timeout has occurred
+    if (millis() - startMillis > timeout)
+    {
+      Serial.println("RTC Module not found after 5 seconds. Please check the connection.");
+      while (true)
+        ; // Stop the program
+    }
   }
 
-  adjustRTC();
+  // If the RTC was previously initialized, do not adjust the time again.
+  if (rtc.now().year() < 2000) {  // If the RTC is not set (year < 2000), adjust time
+    Serial.println("RTC time is invalid. Adjusting to compile time.");
+    adjustRTC();
+  } else {
+    Serial.println("RTC time is valid. No adjustment needed.");
+  }
 }
 
 /**
