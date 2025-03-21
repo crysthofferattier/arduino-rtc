@@ -36,8 +36,6 @@ void loop()
 
 /*!
     @brief  Set the date to the date and time of the compilation of the program
-
-    @bug if Arduino is turned off the date and time will be set to the Date and Time from last compilation
 */
 void adjustRTC()
 {
